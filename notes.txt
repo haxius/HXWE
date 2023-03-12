@@ -1,0 +1,34 @@
+Core Structure Notes:
+
+App Hierarchy:
+- Recoil Root
+- - Theme Provider
+X - - Router
+- - - - Task Manager
+- - - - - Core Tasks
+- - - - - - Wallpaper
+- - - - - - Desktop Icons
+- - - - - - Taskbar
+- - - - - User Tasks
+- - - - - - User Applications
+
+Recoil Atoms
+- Theme Props
+- Per Task Props
+
+Task Prop example:
+- Window Size/Location
+- User Prefs...
+
+Core Classes
+- Window
+- - Window Props
+- - - Name
+- - - Size/Location
+- - - Persist?
+- - - Border Style
+- - - Background Style
+- - - - Transparent/Filled
+- - - - TitleBar
+- - - - Controls (ENUM Options?)
+- - - - Pin (Top/Bottom/None)
