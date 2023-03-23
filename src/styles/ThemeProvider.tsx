@@ -14,11 +14,13 @@ const ThemeProvider: React.FC<IThemeProps> = ({ children, ...props }) => (
   <>
     <Global styles={GlobalStyles(props)} />
     <EmotionThemeProvider
-      theme={{
-        ...Colors(props),
-        ...Spacing(props),
-        ...Typography(props),
-      }}
+      theme={
+        {
+          Colors: Colors(props),
+          Spacing: Spacing(props),
+          Typography: Typography(props),
+        } as App.Theme
+      }
     >
       {children}
     </EmotionThemeProvider>

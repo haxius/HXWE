@@ -11,8 +11,8 @@ const GlobalStyles = (props: IGlobalStylesThemeProps): SerializedStyles => css`
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 
-    background-color: ${props.darkModeEnabled ? "black" : "white"};
-    color: ${props.darkModeEnabled ? "white" : "black"};
+    background-color: black;
+    color: white;
   }
 
   code {

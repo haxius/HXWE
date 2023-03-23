@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { RecoilRoot } from "recoil";
 import reportWebVitals from "./reportWebVitals";
 import ThemeProvider from "./styles/ThemeProvider";
+import CoreTasks from "./tasks/core";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -13,7 +14,7 @@ root.render(
     <React.StrictMode>
       <RecoilRoot>
         <ThemeProvider darkModeEnabled>
-          <></>
+          <CoreTasks />
         </ThemeProvider>
       </RecoilRoot>
     </React.StrictMode>
