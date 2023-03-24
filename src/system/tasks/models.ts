@@ -6,6 +6,8 @@ export interface ITaskProps {
   requestTaskStart?: (task: ITask) => void;
 }
 
+export type TTaskPropsWith<T = {}> = ITaskProps & T;
+
 export interface ITask {
   component: React.ReactElement;
   name: string;
