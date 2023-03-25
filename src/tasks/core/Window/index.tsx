@@ -12,6 +12,8 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
 }) => {
   const handleRef = useRef<HTMLElement | null>(null);
 
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+
   const [coords, setCoords] = useState<IWindowCoords>({
     height: initialCoords?.height ?? 240,
     width: initialCoords?.width ?? 320,
@@ -19,17 +21,24 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
     top: initialCoords?.top ?? 100,
   });
 
+  console.log("Is dragging:", isDragging);
+
   useEffect(() => {
     const handle: HTMLElement | null = handleRef?.current;
-    const handleClick = () => console.log("Clicked!");
+    const handleMouseDown = () => setIsDragging(true);
+    const handleMouseUp = () => setIsDragging(false);
 
     if (handle && !handle?.getAttribute("data-bound")?.length) {
-      handle.addEventListener("click", handleClick);
+      handle.addEventListener("mousedown", handleMouseDown);
+      handle.addEventListener("mouseup", handleMouseUp);
+      document.addEventListener("mouseout", handleMouseUp);
       handle.setAttribute("data-bound", "true");
     }
 
     return () => {
-      handle?.removeEventListener("click", handleClick);
+      handle?.removeEventListener("mousedown", handleMouseDown);
+      handle?.removeEventListener("mouseup", handleMouseUp);
+      document?.removeEventListener("mouseout", handleMouseUp);
       handle?.removeAttribute("data-bound");
     };
   }, [handleRef]);
