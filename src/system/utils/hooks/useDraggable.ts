@@ -1,27 +1,37 @@
 import { useCallback, useState } from "react";
-import { IWindowCoords } from "../../../tasks/core/Window/models";
+
+export interface IUseDraggableCoords {
+  left: number;
+  top: number;
+  height: number;
+  width: number;
+}
 
 interface IUseDraggableResponse {
-  coords: IWindowCoords;
+  coords: IUseDraggableCoords;
   handleBeginMove: (e: PointerEvent) => void;
   handleEndMove: (e: PointerEvent) => void;
   handleMove: ((e: PointerEvent) => void) | undefined;
 }
 
 interface IUseDraggableProps {
-  initialCoords: Partial<IWindowCoords> | undefined;
+  initialCoords: Partial<IUseDraggableCoords> | undefined;
   ref: React.MutableRefObject<HTMLElement | null>;
+  restrictBounds?: boolean;
+  setStyles?: boolean;
 }
 
 export const useDraggable = ({
   initialCoords,
   ref,
+  restrictBounds,
+  setStyles,
 }: IUseDraggableProps): IUseDraggableResponse => {
-  const [coords, setCoords] = useState<IWindowCoords>({
-    height: initialCoords?.height ?? 240,
-    width: initialCoords?.width ?? 320,
+  const [coords, setCoords] = useState<IUseDraggableCoords>({
     left: initialCoords?.left ?? 100,
     top: initialCoords?.top ?? 100,
+    height: initialCoords?.height ?? 240,
+    width: initialCoords?.width ?? 320,
   });
 
   const [offsetCoords, setOffsetCoords] = useState<
@@ -30,13 +40,41 @@ export const useDraggable = ({
 
   const handleMove = useCallback(
     (e: PointerEvent) => {
+      const newLeft = e.clientX - (offsetCoords?.dragOffsetLeft ?? 0);
+      const newTop = e.clientY - (offsetCoords?.dragOffsetTop ?? 0);
+
+      if (setStyles) {
+        ref?.current?.setAttribute(
+          "style",
+          [`left: ${newLeft.toFixed(3)}px`, `top: ${newTop.toFixed(3)}px`].join(
+            "; "
+          )
+        );
+      }
+
       setCoords({
         ...coords,
-        left: e.clientX - (offsetCoords?.dragOffsetLeft ?? 0),
-        top: e.clientY - (offsetCoords?.dragOffsetTop ?? 0),
+        left: restrictBounds
+          ? Math.max(
+              Math.min(
+                newLeft,
+                window.innerWidth - (ref?.current?.offsetWidth ?? 0)
+              ),
+              0
+            )
+          : newLeft,
+        top: restrictBounds
+          ? Math.max(
+              Math.min(
+                newTop,
+                window.innerHeight - (ref?.current?.offsetHeight ?? 0)
+              ),
+              0
+            )
+          : newTop,
       });
     },
-    [coords, offsetCoords, ref]
+    [coords, offsetCoords, ref, restrictBounds, setStyles]
   );
 
   const handleBeginMove = useCallback(
@@ -48,7 +86,7 @@ export const useDraggable = ({
         dragOffsetTop: e.clientY - (ref?.current?.offsetTop ?? 0),
       });
     },
-    [handleMove, ref]
+    [ref]
   );
 
   const handleEndMove = useCallback(
@@ -57,7 +95,7 @@ export const useDraggable = ({
 
       setOffsetCoords(undefined);
     },
-    [handleMove, ref]
+    [ref]
   );
 
   return {
