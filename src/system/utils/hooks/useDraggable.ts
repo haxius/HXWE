@@ -1,21 +1,15 @@
 import { useCallback, useState } from "react";
-
-export interface IUseDraggableCoords {
-  left: number;
-  top: number;
-  height: number;
-  width: number;
-}
+import { ICoords } from "../../models/coords";
 
 interface IUseDraggableResponse {
-  coords: IUseDraggableCoords;
+  coords: ICoords;
   handleBeginMove: (e: PointerEvent) => void;
   handleEndMove: (e: PointerEvent) => void;
   handleMove: ((e: PointerEvent) => void) | undefined;
 }
 
 interface IUseDraggableProps {
-  initialCoords: Partial<IUseDraggableCoords> | undefined;
+  initialCoords: Partial<ICoords> | undefined;
   ref: React.MutableRefObject<HTMLElement | null>;
   restrictBounds?: boolean;
   setStyles?: boolean;
@@ -27,7 +21,7 @@ export const useDraggable = ({
   restrictBounds,
   setStyles,
 }: IUseDraggableProps): IUseDraggableResponse => {
-  const [coords, setCoords] = useState<IUseDraggableCoords>({
+  const [coords, setCoords] = useState<ICoords>({
     left: initialCoords?.left ?? 100,
     top: initialCoords?.top ?? 100,
     height: initialCoords?.height ?? 240,

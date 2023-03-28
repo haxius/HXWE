@@ -1,10 +1,8 @@
 import React, { useEffect, useRef } from "react";
+import { ICoords } from "../../../system/models/coords";
 import { TTaskPropsWith } from "../../../system/tasks/models";
 import { useDebounce } from "../../../system/utils/hooks/useDebounce";
-import {
-  IUseDraggableCoords,
-  useDraggable,
-} from "../../../system/utils/hooks/useDraggable";
+import { useDraggable } from "../../../system/utils/hooks/useDraggable";
 import { IWindowCoords } from "./models";
 import StyledWindow from "./Window.styled";
 
@@ -29,10 +27,7 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
     setStyles: true,
   });
 
-  const debouncedCoords = useDebounce<IUseDraggableCoords>(
-    draggableCoords,
-    100
-  );
+  const debouncedCoords = useDebounce<ICoords>(draggableCoords, 100);
 
   useEffect(
     () => handleRef?.current?.setAttribute("style", ""),
