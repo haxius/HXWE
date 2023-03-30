@@ -11,13 +11,13 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <>
-    <React.StrictMode>
-      <RecoilRoot>
-        <ThemeProvider darkModeEnabled>
-          <CoreTasks />
-        </ThemeProvider>
-      </RecoilRoot>
-    </React.StrictMode>
+    {/* <React.StrictMode> */}
+    <RecoilRoot>
+      <ThemeProvider darkModeEnabled>
+        <CoreTasks />
+      </ThemeProvider>
+    </RecoilRoot>
+    {/* </React.StrictMode> */}
   </>
 );
 
