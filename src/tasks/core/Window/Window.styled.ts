@@ -5,17 +5,18 @@ import { IWindowCoords } from "./models";
 interface IStyledWindowProps extends IWindowCoords {}
 
 const StyledWindow = styled.article`
+  position: absolute;
   display: flex;
   flex-direction: column;
   border: 1px solid red;
-  position: absolute;
+  padding: 5px;
+  will-change: transform, left, top, width, heights;
 
   ${({ width, height, top, left }: TPropsWithTheme<IStyledWindowProps>) => `
     height: ${height}px;
     width: ${width}px;
     left: ${left}px;
     top: ${top}px;
-    padding: 5px;
   `}
 `;
 
@@ -23,7 +24,6 @@ export const StyledWindowWrapper = styled.div`
   border: 1px dashed green;
   flex: 1;
   position: relative;
-  width: 100%;
 `;
 
 export const StyledWindowHandle = styled.div`

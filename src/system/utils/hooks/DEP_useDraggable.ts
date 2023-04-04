@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { ICoords } from "../../models/coords";
+import { useDebounce } from "./useDebounce";
 
 enum EUseDraggableContainerType {
   DRAG = "drag",
@@ -22,6 +23,13 @@ export type IUseDraggableContainerEvents = Map<
   IUseDraggableContainerEventCollection
 >;
 
+export interface IUseDraggableCoords {
+  dragOffsetLeft?: number;
+  dragOffsetTop?: number;
+  resizeOffsetLeft?: number;
+  resizeOffsetTop?: number;
+}
+
 interface IUseDraggableResponse {
   coords: ICoords;
   dragEvents: IUseDraggableContainerEvents;
@@ -30,6 +38,7 @@ interface IUseDraggableResponse {
 
 interface IUseDraggableProps {
   container: React.MutableRefObject<HTMLElement | null>;
+  debounce?: boolean;
   dragHandles: IUseDraggableContainers;
   initialCoords: Partial<ICoords> | undefined;
   resizeHandles?: IUseDraggableContainers;
@@ -39,15 +48,13 @@ interface IUseDraggableProps {
 
 export const useDraggable = ({
   container,
+  debounce = true,
   dragHandles,
   initialCoords,
   resizeHandles,
   restrictBounds,
   setStyles,
 }: IUseDraggableProps): IUseDraggableResponse => {
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [isResizing, setIsResizing] = useState<boolean>(false);
-
   const [coords, setCoords] = useState<ICoords>({
     left: initialCoords?.left ?? 100,
     top: initialCoords?.top ?? 100,
@@ -55,9 +62,10 @@ export const useDraggable = ({
     width: initialCoords?.width ?? 320,
   });
 
+  const debouncedCoords = useDebounce(coords, 100);
+
   const [offsetCoords, setOffsetCoords] = useState<
-    | (Partial<ICoords> & { dragOffsetTop?: number; dragOffsetLeft?: number })
-    | undefined
+    (Partial<ICoords> & Partial<IUseDraggableCoords>) | undefined
   >();
 
   const handlePointerDown = useCallback(
@@ -67,57 +75,64 @@ export const useDraggable = ({
       type: EUseDraggableContainerType
     ) => {
       if (
-        (type === EUseDraggableContainerType.DRAG && isDragging) ||
-        (type === EUseDraggableContainerType.RESIZE && isResizing)
+        (type === EUseDraggableContainerType.DRAG &&
+          offsetCoords?.dragOffsetTop !== undefined) ||
+        (type === EUseDraggableContainerType.RESIZE &&
+          offsetCoords?.resizeOffsetTop !== undefined)
       ) {
         return;
       }
 
-      ref?.current?.setPointerCapture(e.pointerId);
-
-      setOffsetCoords({
-        dragOffsetLeft: e.clientX - (container?.current?.offsetLeft ?? 0),
-        dragOffsetTop: e.clientY - (container?.current?.offsetTop ?? 0),
+      const newOffsetCoords: Partial<ICoords> & Partial<IUseDraggableCoords> = {
         height: coords.height,
         width: coords.width,
-      });
+      };
 
-      if (type === EUseDraggableContainerType.DRAG) {
-        setIsDragging(true);
+      const offsetLeft = e.clientX - (container?.current?.offsetLeft ?? 0);
+      const offsetTop = e.clientY - (container?.current?.offsetTop ?? 0);
+
+      ref?.current?.setPointerCapture(e.pointerId);
+
+      if (type === EUseDraggableContainerType.RESIZE) {
+        newOffsetCoords.resizeOffsetLeft = offsetLeft;
+        newOffsetCoords.resizeOffsetTop = offsetTop;
       } else {
-        setIsResizing(true);
+        newOffsetCoords.dragOffsetLeft = offsetLeft;
+        newOffsetCoords.dragOffsetTop = offsetTop;
       }
+
+      setOffsetCoords(newOffsetCoords);
     },
-    [container, isDragging, isResizing]
+    [
+      container,
+      coords.height,
+      coords.width,
+      offsetCoords?.dragOffsetTop,
+      offsetCoords?.resizeOffsetTop,
+    ]
   );
 
   const handlePointerUp = useCallback(
-    (
-      e: PointerEvent,
-      ref: React.MutableRefObject<HTMLElement | null>,
-      type: EUseDraggableContainerType
-    ) => {
+    (e: PointerEvent, ref: React.MutableRefObject<HTMLElement | null>) => {
       ref?.current?.releasePointerCapture(e.pointerId);
 
       setOffsetCoords(undefined);
-
-      if (type === EUseDraggableContainerType.DRAG) {
-        setIsDragging(false);
-      } else {
-        setIsResizing(false);
-      }
     },
     []
   );
 
   const handlePointerMove = useCallback(
     (e: PointerEvent, ref: React.MutableRefObject<HTMLElement | null>) => {
-      if ((!isDragging && !isResizing) || !offsetCoords) {
+      if (!offsetCoords) {
         return;
       }
+      const isResizing = offsetCoords.resizeOffsetLeft !== undefined;
+      const isDragging = offsetCoords.dragOffsetLeft !== undefined;
 
-      const newLeft = e.clientX - (offsetCoords.dragOffsetLeft ?? 0);
-      const newTop = e.clientY - (offsetCoords.dragOffsetTop ?? 0);
+      const newLeft = Math.trunc(
+        e.clientX - (offsetCoords.dragOffsetLeft ?? 0)
+      );
+      const newTop = Math.trunc(e.clientY - (offsetCoords.dragOffsetTop ?? 0));
 
       const newHeight = isResizing
         ? (offsetCoords?.height ?? 0) + newTop - coords.top
@@ -131,10 +146,10 @@ export const useDraggable = ({
         container?.current?.setAttribute(
           "style",
           [
-            isResizing && `height: ${newHeight.toFixed(3)}px`,
-            isDragging && `left: ${newLeft.toFixed(3)}px`,
-            isDragging && `top: ${newTop.toFixed(3)}px`,
-            isResizing && `width: ${newWidth.toFixed(3)}px`,
+            isResizing && `height: ${newHeight}px`,
+            isDragging && `left: ${newLeft}px`,
+            isDragging && `top: ${newTop}px`,
+            isResizing && `width: ${newWidth}px`,
           ]
             .filter((f) => f)
             .join("; ")
@@ -176,15 +191,7 @@ export const useDraggable = ({
         width: isResizing ? newWidth : coords.width,
       });
     },
-    [
-      container,
-      coords,
-      isDragging,
-      isResizing,
-      offsetCoords,
-      restrictBounds,
-      setStyles,
-    ]
+    [container, coords, offsetCoords, restrictBounds, setStyles]
   );
 
   const dragHandlesWithEvents: IUseDraggableContainerEvents = useMemo(() => {
@@ -197,8 +204,7 @@ export const useDraggable = ({
       newDragHandles.set(title, {
         handlePointerDown: (e) =>
           handlePointerDown(e, ref, EUseDraggableContainerType.DRAG),
-        handlePointerUp: (e) =>
-          handlePointerUp(e, ref, EUseDraggableContainerType.DRAG),
+        handlePointerUp: (e) => handlePointerUp(e, ref),
         handlePointerMove: (e) => handlePointerMove(e, ref),
       });
     });
@@ -216,8 +222,7 @@ export const useDraggable = ({
       newResizeHandles.set(title, {
         handlePointerDown: (e) =>
           handlePointerDown(e, ref, EUseDraggableContainerType.RESIZE),
-        handlePointerUp: (e) =>
-          handlePointerUp(e, ref, EUseDraggableContainerType.RESIZE),
+        handlePointerUp: (e) => handlePointerUp(e, ref),
         handlePointerMove: (e) => handlePointerMove(e, ref),
       });
     });
@@ -226,7 +231,7 @@ export const useDraggable = ({
   }, [handlePointerDown, handlePointerMove, handlePointerUp, resizeHandles]);
 
   return {
-    coords,
+    coords: debounce ? debouncedCoords : coords,
     dragEvents: dragHandlesWithEvents,
     resizeEvents: resizeHandlesWithEvents,
   };

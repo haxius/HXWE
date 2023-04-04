@@ -8,6 +8,7 @@ const CoreTasks: React.FC = () => (
     initialTasks={[
       { component: <Wallpaper />, name: "Wallpaper" },
       { component: <Window />, name: "Window" },
+      { component: <Window />, name: "Window2" },
     ]}
   />
 );

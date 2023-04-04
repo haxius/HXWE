@@ -1,8 +1,7 @@
-import React, { useCallback, useEffect, useRef } from "react";
-import { ICoords } from "../../../system/models/coords";
+import React, { useCallback, useRef } from "react";
 import { TTaskPropsWith } from "../../../system/tasks/models";
-import { useDebounce } from "../../../system/utils/hooks/useDebounce";
-import { useDraggable } from "../../../system/utils/hooks/useDraggable";
+import useDraggable from "../../../system/utils/hooks/useDraggableTransform";
+import { EUseDraggableContainerType } from "../../../system/utils/hooks/useDraggable/models";
 import { IWindowCoords } from "./models";
 import StyledWindow, {
   StyledWindowHandle,
@@ -15,70 +14,70 @@ interface IWindowProps {
 }
 
 const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
+  children,
   coords: initialCoords,
+  name,
 }) => {
   const containerRef = useRef<HTMLElement | null>(null);
   const moveRef = useRef<HTMLElement | null>(null);
   const resizeRef = useRef<HTMLElement | null>(null);
 
-  const {
-    coords: draggableCoords,
-    dragEvents,
-    resizeEvents,
-  } = useDraggable({
-    container: containerRef,
-    dragHandles: new Map([["main", moveRef]]),
-    initialCoords,
-    resizeHandles: new Map([["main", resizeRef]]),
-    restrictBounds: true,
-    setStyles: true,
-  });
+  console.log("Rendered", name);
 
-  const debouncedCoords = useDebounce<ICoords>(draggableCoords, 100);
+  const { handlePointerDown, handlePointerMove, handlePointerUp } =
+    useDraggable({
+      container: containerRef,
+      initialCoords,
+      restrictBounds: true,
+      setStyles: true,
+    });
 
-  useEffect(
-    () => containerRef?.current?.setAttribute("style", ""),
-    [debouncedCoords]
+  const onDragHandlePointerDown = useCallback(
+    (e: PointerEvent) =>
+      handlePointerDown(e, moveRef, EUseDraggableContainerType.DRAG),
+    [handlePointerDown]
+  );
+  const onDragHandlePointerUp = useCallback(
+    (e: PointerEvent) =>
+      handlePointerUp(e, moveRef, EUseDraggableContainerType.DRAG),
+    [handlePointerUp]
+  );
+  const onDragHandlePointerMove = useCallback(
+    (e: PointerEvent) => handlePointerMove(e, moveRef),
+    [handlePointerMove]
   );
 
-  console.log("Rendered.");
+  const onResizeHandlePointerDown = useCallback(
+    (e: PointerEvent) =>
+      handlePointerDown(e, moveRef, EUseDraggableContainerType.RESIZE),
+    [handlePointerDown]
+  );
+  const onResizeHandlePointerUp = useCallback(
+    (e: PointerEvent) =>
+      handlePointerUp(e, moveRef, EUseDraggableContainerType.RESIZE),
+    [handlePointerUp]
+  );
+  const onResizeHandlePointerMove = useCallback(
+    (e: PointerEvent) => handlePointerMove(e, moveRef),
+    [handlePointerMove]
+  );
 
   return (
-    <StyledWindow {...initialCoords} {...debouncedCoords} ref={containerRef}>
+    <StyledWindow ref={containerRef}>
       <StyledWindowHandle
         ref={moveRef}
-        onPointerDown={useCallback(
-          (e: PointerEvent) => dragEvents.get("main")?.handlePointerDown?.(e),
-          [dragEvents]
-        )}
-        onPointerUp={useCallback(
-          (e: PointerEvent) => dragEvents.get("main")?.handlePointerUp?.(e),
-          [dragEvents]
-        )}
-        onPointerMove={useCallback(
-          (e: PointerEvent) => dragEvents.get("main")?.handlePointerMove?.(e),
-          [dragEvents]
-        )}
+        onPointerDown={onDragHandlePointerDown}
+        onPointerUp={onDragHandlePointerUp}
+        onPointerMove={onDragHandlePointerMove}
       />
       <StyledWindowWrapper>
         <StyledWindowResizeHandle
           ref={resizeRef}
-          onPointerDown={useCallback(
-            (e: PointerEvent) =>
-              resizeEvents?.get("main")?.handlePointerDown?.(e),
-            [resizeEvents]
-          )}
-          onPointerUp={useCallback(
-            (e: PointerEvent) =>
-              resizeEvents?.get("main")?.handlePointerUp?.(e),
-            [resizeEvents]
-          )}
-          onPointerMove={useCallback(
-            (e: PointerEvent) =>
-              resizeEvents?.get("main")?.handlePointerMove?.(e),
-            [resizeEvents]
-          )}
+          onPointerDown={onResizeHandlePointerDown}
+          onPointerUp={onResizeHandlePointerUp}
+          onPointerMove={onResizeHandlePointerMove}
         />
+        {children}
       </StyledWindowWrapper>
     </StyledWindow>
   );

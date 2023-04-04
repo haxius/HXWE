@@ -2,6 +2,11 @@ import { css, SerializedStyles } from "@emotion/react";
 import { IGlobalStylesThemeProps } from "../models";
 
 const GlobalStyles = (props: IGlobalStylesThemeProps): SerializedStyles => css`
+  html,
+  body {
+    overflow: hidden;
+  }
+
   body {
     box-sizing: border-box;
     margin: 0;
