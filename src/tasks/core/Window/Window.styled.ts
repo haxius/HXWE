@@ -10,6 +10,7 @@ const StyledWindow = styled.article`
   flex-direction: column;
   border: 1px solid red;
   padding: 5px;
+  transform-origin: top left;
   will-change: transform, left, top, width, heights;
 
   ${({ width, height, top, left }: TPropsWithTheme<IStyledWindowProps>) => `
@@ -30,6 +31,8 @@ export const StyledWindowHandle = styled.div`
   border: 1px solid purple;
   height: 32px;
   width: 100%;
+  user-select: none;
+  cursor: grab;
 `;
 
 export const StyledWindowResizeHandle = styled.div`
@@ -39,6 +42,8 @@ export const StyledWindowResizeHandle = styled.div`
   width: 32px;
   right: 5px;
   position: absolute;
+  user-select: none;
+  cursor: grab;
 `;
 
 export default StyledWindow;

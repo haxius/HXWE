@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { ICoords } from "../../../models/coords";
 import { EUseDraggableContainerType, IUseDraggableCoords } from "./models";
 
@@ -27,17 +27,6 @@ interface IUseDraggableProps {
   setStyles?: boolean;
 }
 
-let offsetCoords:
-  | (Partial<ICoords> & Partial<IUseDraggableCoords>)
-  | undefined = undefined;
-
-let draggableRect: DOMRectReadOnly | undefined;
-
-const observer = new IntersectionObserver((entries) => {
-  draggableRect = entries?.[0]?.boundingClientRect;
-  observer.disconnect();
-});
-
 const useDraggable = ({
   container,
   initialCoords,
@@ -60,6 +49,9 @@ const useDraggable = ({
     }
   }, [container, initialCoords, setStyles]);
 
+  const startCoords = useRef<ICoords | undefined>();
+  const offsetCoords = useRef<Partial<IUseDraggableCoords> | undefined>();
+
   const handlePointerDown = useCallback(
     (
       e: PointerEvent,
@@ -68,9 +60,9 @@ const useDraggable = ({
     ) => {
       if (
         (type === EUseDraggableContainerType.DRAG &&
-          offsetCoords?.dragOffsetTop !== undefined) ||
+          offsetCoords.current?.dragOffsetTop !== undefined) ||
         (type === EUseDraggableContainerType.RESIZE &&
-          offsetCoords?.resizeOffsetTop !== undefined)
+          offsetCoords.current?.resizeOffsetTop !== undefined)
       ) {
         return;
       }
@@ -90,27 +82,34 @@ const useDraggable = ({
         parseFloat(currentStyle?.borderLeftWidth ?? "") +
         parseFloat(currentStyle?.borderRightWidth ?? "");
 
-      const newOffsetCoords: Partial<ICoords> & Partial<IUseDraggableCoords> = {
-        boxHeight,
-        boxWidth,
-        height: (container?.current?.offsetHeight ?? 0) + boxHeight,
-        width: (container?.current?.offsetWidth ?? 0) + boxWidth,
+      startCoords.current = {
+        height:
+          parseFloat(currentStyle?.height?.replace(/px^/, "") ?? "") ||
+          (container?.current?.offsetHeight ?? 0 + boxHeight),
+        width:
+          parseFloat(currentStyle?.width?.replace(/px^/, "") ?? "") ||
+          (container?.current?.offsetWidth ?? 0 + boxWidth),
+        left:
+          parseFloat(currentStyle?.left?.replace(/px^/, "") ?? "") ||
+          (container?.current?.offsetLeft ?? 0),
+        top:
+          parseFloat(currentStyle?.top?.replace(/px^/, "") ?? "") ||
+          (container?.current?.offsetTop ?? 0),
       };
 
-      const offsetLeft = e.clientX - (container?.current?.offsetLeft ?? 0);
-      const offsetTop = e.clientY - (container?.current?.offsetTop ?? 0);
-
-      ref?.current?.setPointerCapture(e.pointerId);
-
       if (type === EUseDraggableContainerType.RESIZE) {
-        newOffsetCoords.resizeOffsetLeft = offsetLeft;
-        newOffsetCoords.resizeOffsetTop = offsetTop;
+        offsetCoords.current = {
+          resizeOffsetLeft: e.clientX,
+          resizeOffsetTop: e.clientY,
+        };
       } else {
-        newOffsetCoords.dragOffsetLeft = offsetLeft;
-        newOffsetCoords.dragOffsetTop = offsetTop;
+        offsetCoords.current = {
+          dragOffsetLeft: e.clientX - startCoords.current.left,
+          dragOffsetTop: e.clientY - startCoords.current.top,
+        };
       }
 
-      offsetCoords = newOffsetCoords;
+      ref?.current?.setPointerCapture(e.pointerId);
     },
     [container]
   );
@@ -119,62 +118,100 @@ const useDraggable = ({
     (e: PointerEvent, ref: React.MutableRefObject<HTMLElement | null>) => {
       ref?.current?.releasePointerCapture(e.pointerId);
 
-      offsetCoords = undefined;
-    },
-    []
-  );
+      const currentStyle =
+        container.current && window.getComputedStyle(container.current);
 
-  const handlePointerMove = useCallback(
-    (e: PointerEvent, ref: React.MutableRefObject<HTMLElement | null>) => {
-      if (!offsetCoords || !container?.current) {
-        return;
-      }
-
-      observer.observe(container.current);
-
-      const currentRect = {
-        width: draggableRect?.width ?? 0,
-        height: draggableRect?.height ?? 0,
-        top: draggableRect?.top ?? 0,
-        left: draggableRect?.left ?? 0,
-      };
-
-      console.log("Draggable Rect:", draggableRect?.x);
-
-      currentRect.width -= offsetCoords.boxWidth ?? 0;
-      currentRect.height -= offsetCoords.boxHeight ?? 0;
-
-      const isResizing = offsetCoords.resizeOffsetLeft !== undefined;
-      const isDragging = offsetCoords.dragOffsetLeft !== undefined;
-      // const currentHeight = container?.current?.clientHeight ?? 0;
-      // const currentWidth = container?.current?.clientWidth ?? 0;
-      // const currentTop = container?.current?.offsetTop ?? 0;
-      // const currentLeft = container?.current?.offsetLeft ?? 0;
-
-      const newLeft = Math.trunc(
-        e.clientX - (offsetCoords.dragOffsetLeft ?? 0)
-      );
-      const newTop = Math.trunc(e.clientY - (offsetCoords.dragOffsetTop ?? 0));
-
-      const newHeight = isResizing
-        ? (offsetCoords?.height ?? 0) + newTop - currentRect.top
-        : currentRect.height;
-
-      const newWidth = isResizing
-        ? (offsetCoords?.width ?? 0) + newLeft - currentRect.left
-        : currentRect.width;
+      const isResizing = offsetCoords.current?.resizeOffsetLeft !== undefined;
 
       if (setStyles) {
         container?.current?.setAttribute(
           "style",
           [
-            `height: ${isResizing ? newHeight : currentRect.height}px`,
-            `left: ${isDragging ? newLeft : currentRect.left}px`,
-            `top: ${isDragging ? newTop : currentRect.top}px`,
-            `width: ${isResizing ? newWidth : currentRect.width}px`,
+            `height: ${
+              currentStyle?.height ?? `${initialCoords?.height?.toFixed(0)}px`
+            }`,
+            `width: ${
+              currentStyle?.width ?? `${initialCoords?.width?.toFixed(0)}px`
+            }`,
+            `left: ${
+              isResizing
+                ? (startCoords?.current?.left ?? 0).toFixed(0)
+                : (
+                    e.clientX - (offsetCoords.current?.dragOffsetLeft ?? 0)
+                  ).toFixed(0)
+            }px`,
+            `top: ${
+              isResizing
+                ? (startCoords?.current?.top ?? 0).toFixed(0)
+                : (
+                    e.clientY - (offsetCoords.current?.dragOffsetTop ?? 0)
+                  ).toFixed(0)
+            }px`,
           ]
             .filter((f) => f)
             .join("; ")
+        );
+      }
+
+      offsetCoords.current = undefined;
+      startCoords.current = undefined;
+    },
+    [container, initialCoords?.height, initialCoords?.width, setStyles]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: PointerEvent, ref: React.MutableRefObject<HTMLElement | null>) => {
+      if (!offsetCoords?.current || !container?.current) {
+        return;
+      }
+      const isResizing = offsetCoords.current?.resizeOffsetLeft !== undefined;
+      const isDragging = offsetCoords.current?.dragOffsetLeft !== undefined;
+
+      const newLeft = isDragging
+        ? e.clientX - (offsetCoords.current?.dragOffsetLeft ?? 0)
+        : startCoords.current?.left ?? 0;
+
+      const newTop = isDragging
+        ? e.clientY - (offsetCoords.current?.dragOffsetTop ?? 0)
+        : startCoords.current?.top ?? 0;
+
+      const newWidth =
+        (e.clientX -
+          (offsetCoords?.current?.resizeOffsetLeft ?? 0) +
+          (startCoords?.current?.width ?? 0)) /
+        (startCoords.current?.width ?? 1);
+
+      const newHeight =
+        (e.clientY -
+          (offsetCoords?.current?.resizeOffsetTop ?? 0) +
+          (startCoords?.current?.height ?? 0)) /
+        (startCoords.current?.height ?? 1);
+
+      if (setStyles) {
+        const transform = [];
+        const styles = [];
+
+        if (isResizing) {
+          transform.push(
+            `scale(${newWidth.toFixed(3)}, ${newHeight.toFixed(3)})`
+          );
+        } else {
+          transform.push(`translateX(${newLeft.toFixed(0)}px)`);
+          transform.push(`translateY(${newTop.toFixed(0)}px)`);
+        }
+
+        styles.push(`transform: ${transform.join(" ")}`);
+        styles.push(`height: ${startCoords.current?.height}px`);
+        styles.push(`width: ${startCoords.current?.width}px`);
+
+        if (isResizing) {
+          styles.push(`top: ${startCoords.current?.top}px`);
+          styles.push(`left: ${startCoords.current?.left}px`);
+        }
+
+        container?.current?.setAttribute(
+          "style",
+          styles.filter((f) => f).join("; ")
         );
       }
 

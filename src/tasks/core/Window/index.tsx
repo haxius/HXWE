@@ -1,6 +1,6 @@
 import React, { useCallback, useRef } from "react";
 import { TTaskPropsWith } from "../../../system/tasks/models";
-import useDraggable from "../../../system/utils/hooks/useDraggableTransform";
+import useDraggable from "../../../system/utils/hooks/useDraggable";
 import { EUseDraggableContainerType } from "../../../system/utils/hooks/useDraggable/models";
 import { IWindowCoords } from "./models";
 import StyledWindow, {
