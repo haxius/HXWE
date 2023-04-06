@@ -29,7 +29,7 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
       container: containerRef,
       initialCoords,
       restrictBounds: true,
-      setStyles: true,
+      //quality: 0,
     });
 
   const onDragHandlePointerDown = useCallback(

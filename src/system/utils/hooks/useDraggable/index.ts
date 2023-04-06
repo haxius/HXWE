@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import { ICoords } from "../../../models/coords";
-import { EUseDraggableContainerType, IUseDraggableCoords } from "./models";
+import {
+  EUseDraggableContainerType,
+  EUseDraggableQuality,
+  IUseDraggableCoords,
+} from "./models";
 
 interface IUseDraggableResponse {
   handlePointerDown: (
@@ -23,34 +27,34 @@ interface IUseDraggableProps {
   container: React.MutableRefObject<HTMLElement | null>;
   debounce?: boolean;
   initialCoords: Partial<ICoords> | undefined;
+  quality?: EUseDraggableQuality;
   restrictBounds?: boolean;
-  setStyles?: boolean;
 }
 
 const useDraggable = ({
   container,
   initialCoords,
+  quality = EUseDraggableQuality.BALANCED,
   restrictBounds,
-  setStyles,
 }: IUseDraggableProps): IUseDraggableResponse => {
   useEffect(() => {
-    if (setStyles) {
-      container?.current?.setAttribute(
-        "style",
-        [
-          `height: ${initialCoords?.height ?? 240}px`,
-          `left: ${initialCoords?.left ?? 100}px`,
-          `top: ${initialCoords?.top ?? 100}px`,
-          `width: ${initialCoords?.width ?? 320}px`,
-        ]
-          .filter((f) => f)
-          .join("; ")
-      );
-    }
-  }, [container, initialCoords, setStyles]);
+    container?.current?.setAttribute(
+      "style",
+      [
+        `height: ${initialCoords?.height ?? 240}px`,
+        `left: ${initialCoords?.left ?? 100}px`,
+        `top: ${initialCoords?.top ?? 100}px`,
+        `width: ${initialCoords?.width ?? 320}px`,
+      ]
+        .filter((f) => f)
+        .join("; ")
+    );
+  }, [container, initialCoords]);
 
   const startCoords = useRef<ICoords | undefined>();
   const offsetCoords = useRef<Partial<IUseDraggableCoords> | undefined>();
+  const deltaT = useRef<number>(0);
+  const requestedAnimationFrame = useRef<number | undefined>();
 
   const handlePointerDown = useCallback(
     (
@@ -65,6 +69,10 @@ const useDraggable = ({
           offsetCoords.current?.resizeOffsetTop !== undefined)
       ) {
         return;
+      }
+
+      if (requestedAnimationFrame.current !== undefined) {
+        cancelAnimationFrame(requestedAnimationFrame.current);
       }
 
       const currentStyle =
@@ -118,12 +126,15 @@ const useDraggable = ({
     (e: PointerEvent, ref: React.MutableRefObject<HTMLElement | null>) => {
       ref?.current?.releasePointerCapture(e.pointerId);
 
-      const currentStyle =
-        container.current && window.getComputedStyle(container.current);
+      if (requestedAnimationFrame.current !== undefined) {
+        cancelAnimationFrame(requestedAnimationFrame.current);
+      }
 
-      const isResizing = offsetCoords.current?.resizeOffsetLeft !== undefined;
+      requestAnimationFrame(() => {
+        const currentStyle =
+          container.current && window.getComputedStyle(container.current);
+        const isResizing = offsetCoords.current?.resizeOffsetLeft !== undefined;
 
-      if (setStyles) {
         container?.current?.setAttribute(
           "style",
           [
@@ -151,43 +162,67 @@ const useDraggable = ({
             .filter((f) => f)
             .join("; ")
         );
-      }
 
-      offsetCoords.current = undefined;
-      startCoords.current = undefined;
+        if (requestedAnimationFrame.current !== undefined) {
+          cancelAnimationFrame(requestedAnimationFrame.current);
+        }
+
+        offsetCoords.current = undefined;
+        startCoords.current = undefined;
+        requestedAnimationFrame.current = undefined;
+      });
     },
-    [container, initialCoords?.height, initialCoords?.width, setStyles]
+    [container, initialCoords?.height, initialCoords?.width]
   );
 
   const handlePointerMove = useCallback(
-    (e: PointerEvent, ref: React.MutableRefObject<HTMLElement | null>) => {
-      if (!offsetCoords?.current || !container?.current) {
+    (e: PointerEvent, ref?: React.MutableRefObject<HTMLElement | null>) => {
+      if (
+        !container?.current ||
+        !offsetCoords?.current ||
+        !startCoords?.current ||
+        requestedAnimationFrame.current !== undefined
+      ) {
         return;
       }
+
       const isResizing = offsetCoords.current?.resizeOffsetLeft !== undefined;
       const isDragging = offsetCoords.current?.dragOffsetLeft !== undefined;
 
-      const newLeft = isDragging
-        ? e.clientX - (offsetCoords.current?.dragOffsetLeft ?? 0)
-        : startCoords.current?.left ?? 0;
+      requestedAnimationFrame.current = requestAnimationFrame(() => {
+        const lastDeltaT = deltaT.current;
+        const currentDeltaT = new Date().getTime();
 
-      const newTop = isDragging
-        ? e.clientY - (offsetCoords.current?.dragOffsetTop ?? 0)
-        : startCoords.current?.top ?? 0;
+        if (
+          quality === EUseDraggableQuality.ECO &&
+          currentDeltaT - lastDeltaT < 33
+        ) {
+          requestedAnimationFrame.current = undefined;
+          return;
+        }
 
-      const newWidth =
-        (e.clientX -
-          (offsetCoords?.current?.resizeOffsetLeft ?? 0) +
-          (startCoords?.current?.width ?? 0)) /
-        (startCoords.current?.width ?? 1);
+        deltaT.current = currentDeltaT;
 
-      const newHeight =
-        (e.clientY -
-          (offsetCoords?.current?.resizeOffsetTop ?? 0) +
-          (startCoords?.current?.height ?? 0)) /
-        (startCoords.current?.height ?? 1);
+        const newLeft = isDragging
+          ? e.clientX - (offsetCoords.current?.dragOffsetLeft ?? 0)
+          : startCoords.current?.left ?? 0;
 
-      if (setStyles) {
+        const newTop = isDragging
+          ? e.clientY - (offsetCoords.current?.dragOffsetTop ?? 0)
+          : startCoords.current?.top ?? 0;
+
+        const newWidth =
+          (e.clientX -
+            (offsetCoords?.current?.resizeOffsetLeft ?? 0) +
+            (startCoords?.current?.width ?? 0)) /
+          (startCoords.current?.width ?? 1);
+
+        const newHeight =
+          (e.clientY -
+            (offsetCoords?.current?.resizeOffsetTop ?? 0) +
+            (startCoords?.current?.height ?? 0)) /
+          (startCoords.current?.height ?? 1);
+
         const transform = [];
         const styles = [];
 
@@ -213,7 +248,9 @@ const useDraggable = ({
           "style",
           styles.filter((f) => f).join("; ")
         );
-      }
+
+        requestedAnimationFrame.current = undefined;
+      });
 
       // let restrictedLeft = restrictBounds
       //   ? Math.max(
@@ -235,7 +272,7 @@ const useDraggable = ({
       //     )
       //   : 0;
     },
-    [container, setStyles]
+    [container, quality]
   );
 
   return {

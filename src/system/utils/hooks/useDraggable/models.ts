@@ -3,6 +3,12 @@ export enum EUseDraggableContainerType {
   RESIZE = "resize",
 }
 
+export enum EUseDraggableQuality {
+  ECO = 0, // 30fps Capped Paint Cycle FPS, Hide Window Contents While Resizing
+  BALANCED = 1, // Unlimited Paint Cycle FPS, Hide Window Contents While Resizing
+  QUALITY = 2, // Unlimited Paint Cycle FPS, Show Window Contents While Resizing
+}
+
 export interface IUseDraggableContainerEventCollection {
   handlePointerDown: (e: PointerEvent) => void;
   handlePointerMove: ((e: PointerEvent) => void) | undefined;
