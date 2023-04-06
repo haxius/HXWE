@@ -1,12 +1,14 @@
+import { ICoords } from "../../../models/coords";
+
 export enum EUseDraggableContainerType {
   DRAG = "drag",
   RESIZE = "resize",
 }
 
 export enum EUseDraggableQuality {
-  ECO = 0, // 30fps Capped Paint Cycle FPS, Hide Window Contents While Resizing
-  BALANCED = 1, // Unlimited Paint Cycle FPS, Hide Window Contents While Resizing
-  QUALITY = 2, // Unlimited Paint Cycle FPS, Show Window Contents While Resizing
+  ECO = 0,
+  BALANCED = 1,
+  QUALITY = 2,
 }
 
 export interface IUseDraggableContainerEventCollection {
@@ -16,12 +18,37 @@ export interface IUseDraggableContainerEventCollection {
 }
 
 export interface IUseDraggableCoords {
+  boxHeight?: number;
+  boxWidth?: number;
   dragOffsetLeft?: number;
   dragOffsetTop?: number;
   resizeOffsetLeft?: number;
   resizeOffsetTop?: number;
-  boxHeight?: number;
-  boxWidth?: number;
+}
+
+export interface IUseDraggableProps {
+  container: React.MutableRefObject<HTMLElement | null>;
+  debounce?: boolean;
+  initialCoords: Partial<ICoords> | undefined;
+  quality?: EUseDraggableQuality;
+  restrictBounds?: boolean;
+}
+
+export interface IUseDraggableResponse {
+  handlePointerDown: (
+    e: PointerEvent,
+    ref: React.MutableRefObject<HTMLElement | null>,
+    type: EUseDraggableContainerType
+  ) => void;
+  handlePointerMove: (
+    e: PointerEvent,
+    ref: React.MutableRefObject<HTMLElement | null>
+  ) => void;
+  handlePointerUp: (
+    e: PointerEvent,
+    ref: React.MutableRefObject<HTMLElement | null>,
+    type: EUseDraggableContainerType
+  ) => void;
 }
 
 export type IUseDraggableContainerEvents = Map<

@@ -28,7 +28,6 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
     useDraggable({
       container: containerRef,
       initialCoords,
-      restrictBounds: true,
       //quality: 0,
     });
 

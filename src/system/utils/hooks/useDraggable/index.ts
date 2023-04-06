@@ -4,53 +4,42 @@ import {
   EUseDraggableContainerType,
   EUseDraggableQuality,
   IUseDraggableCoords,
+  IUseDraggableProps,
+  IUseDraggableResponse,
 } from "./models";
-
-interface IUseDraggableResponse {
-  handlePointerDown: (
-    e: PointerEvent,
-    ref: React.MutableRefObject<HTMLElement | null>,
-    type: EUseDraggableContainerType
-  ) => void;
-  handlePointerMove: (
-    e: PointerEvent,
-    ref: React.MutableRefObject<HTMLElement | null>
-  ) => void;
-  handlePointerUp: (
-    e: PointerEvent,
-    ref: React.MutableRefObject<HTMLElement | null>,
-    type: EUseDraggableContainerType
-  ) => void;
-}
-
-interface IUseDraggableProps {
-  container: React.MutableRefObject<HTMLElement | null>;
-  debounce?: boolean;
-  initialCoords: Partial<ICoords> | undefined;
-  quality?: EUseDraggableQuality;
-  restrictBounds?: boolean;
-}
+import buildInlineStyle from "./utils/buildInlineStyle";
+import cancelPendingAnimationFrames from "./utils/cancelPendingAnimationFrames";
+import computeBoxSize from "./utils/computeBoxSize";
 
 const useDraggable = ({
   container,
   initialCoords,
   quality = EUseDraggableQuality.BALANCED,
-  restrictBounds,
+  restrictBounds = true,
 }: IUseDraggableProps): IUseDraggableResponse => {
   useEffect(() => {
+    /**
+     * Set Initial Window Size and Position
+     */
     container?.current?.setAttribute(
       "style",
-      [
-        `height: ${initialCoords?.height ?? 240}px`,
-        `left: ${initialCoords?.left ?? 100}px`,
-        `top: ${initialCoords?.top ?? 100}px`,
-        `width: ${initialCoords?.width ?? 320}px`,
-      ]
-        .filter((f) => f)
-        .join("; ")
+      buildInlineStyle(
+        new Map([
+          ["height", `${initialCoords?.height ?? 240}px`],
+          ["left", `${initialCoords?.left ?? 100}px`],
+          ["top", `${initialCoords?.top ?? 100}px`],
+          ["width", `${initialCoords?.width ?? 320}px`],
+        ])
+      )
     );
   }, [container, initialCoords]);
 
+  // clean from here down vvv
+
+  /**
+   * A few pieces of information we want to persist between function
+   * calls but do not want to cause react state renders.
+   */
   const startCoords = useRef<ICoords | undefined>();
   const offsetCoords = useRef<Partial<IUseDraggableCoords> | undefined>();
   const deltaT = useRef<number>(0);
@@ -62,6 +51,9 @@ const useDraggable = ({
       ref: React.MutableRefObject<HTMLElement | null>,
       type: EUseDraggableContainerType
     ) => {
+      /**
+       * Ignore multi-touch pointer down events.
+       */
       if (
         (type === EUseDraggableContainerType.DRAG &&
           offsetCoords.current?.dragOffsetTop !== undefined) ||
@@ -71,39 +63,12 @@ const useDraggable = ({
         return;
       }
 
-      if (requestedAnimationFrame.current !== undefined) {
-        cancelAnimationFrame(requestedAnimationFrame.current);
-      }
+      /**
+       * Cancel pending animation frames
+       */
+      cancelPendingAnimationFrames(requestedAnimationFrame.current);
 
-      const currentStyle =
-        container.current && window.getComputedStyle(container.current);
-
-      const boxHeight =
-        parseFloat(currentStyle?.paddingTop ?? "") +
-        parseFloat(currentStyle?.paddingBottom ?? "") +
-        parseFloat(currentStyle?.borderTopWidth ?? "") +
-        parseFloat(currentStyle?.borderBottomWidth ?? "");
-
-      const boxWidth =
-        parseFloat(currentStyle?.paddingLeft ?? "") +
-        parseFloat(currentStyle?.paddingRight ?? "") +
-        parseFloat(currentStyle?.borderLeftWidth ?? "") +
-        parseFloat(currentStyle?.borderRightWidth ?? "");
-
-      startCoords.current = {
-        height:
-          parseFloat(currentStyle?.height?.replace(/px^/, "") ?? "") ||
-          (container?.current?.offsetHeight ?? 0 + boxHeight),
-        width:
-          parseFloat(currentStyle?.width?.replace(/px^/, "") ?? "") ||
-          (container?.current?.offsetWidth ?? 0 + boxWidth),
-        left:
-          parseFloat(currentStyle?.left?.replace(/px^/, "") ?? "") ||
-          (container?.current?.offsetLeft ?? 0),
-        top:
-          parseFloat(currentStyle?.top?.replace(/px^/, "") ?? "") ||
-          (container?.current?.offsetTop ?? 0),
-      };
+      startCoords.current = computeBoxSize(container.current);
 
       if (type === EUseDraggableContainerType.RESIZE) {
         offsetCoords.current = {
@@ -112,8 +77,8 @@ const useDraggable = ({
         };
       } else {
         offsetCoords.current = {
-          dragOffsetLeft: e.clientX - startCoords.current.left,
-          dragOffsetTop: e.clientY - startCoords.current.top,
+          dragOffsetLeft: e.clientX - (startCoords.current?.left ?? 0),
+          dragOffsetTop: e.clientY - (startCoords.current?.top ?? 0),
         };
       }
 
@@ -126,9 +91,10 @@ const useDraggable = ({
     (e: PointerEvent, ref: React.MutableRefObject<HTMLElement | null>) => {
       ref?.current?.releasePointerCapture(e.pointerId);
 
-      if (requestedAnimationFrame.current !== undefined) {
-        cancelAnimationFrame(requestedAnimationFrame.current);
-      }
+      /**
+       * Cancel pending animation frames
+       */
+      cancelPendingAnimationFrames(requestedAnimationFrame.current);
 
       requestAnimationFrame(() => {
         const currentStyle =
@@ -163,9 +129,10 @@ const useDraggable = ({
             .join("; ")
         );
 
-        if (requestedAnimationFrame.current !== undefined) {
-          cancelAnimationFrame(requestedAnimationFrame.current);
-        }
+        /**
+         * Cancel pending animation frames
+         */
+        cancelPendingAnimationFrames(requestedAnimationFrame.current);
 
         offsetCoords.current = undefined;
         startCoords.current = undefined;
