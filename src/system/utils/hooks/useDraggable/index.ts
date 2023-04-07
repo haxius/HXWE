@@ -21,7 +21,7 @@ const useDraggable = ({
     /**
      * Set Initial Window Size and Position
      */
-    container?.current?.setAttribute(
+    container.current?.setAttribute(
       "style",
       buildInlineStyle(
         new Map([
@@ -33,8 +33,6 @@ const useDraggable = ({
       )
     );
   }, [container, initialCoords]);
-
-  // clean from here down vvv
 
   /**
    * A few pieces of information we want to persist between function
@@ -101,32 +99,45 @@ const useDraggable = ({
           container.current && window.getComputedStyle(container.current);
         const isResizing = offsetCoords.current?.resizeOffsetLeft !== undefined;
 
-        container?.current?.setAttribute(
+        container.current?.setAttribute(
           "style",
-          [
-            `height: ${
-              currentStyle?.height ?? `${initialCoords?.height?.toFixed(0)}px`
-            }`,
-            `width: ${
-              currentStyle?.width ?? `${initialCoords?.width?.toFixed(0)}px`
-            }`,
-            `left: ${
-              isResizing
-                ? (startCoords?.current?.left ?? 0).toFixed(0)
-                : (
-                    e.clientX - (offsetCoords.current?.dragOffsetLeft ?? 0)
-                  ).toFixed(0)
-            }px`,
-            `top: ${
-              isResizing
-                ? (startCoords?.current?.top ?? 0).toFixed(0)
-                : (
-                    e.clientY - (offsetCoords.current?.dragOffsetTop ?? 0)
-                  ).toFixed(0)
-            }px`,
-          ]
-            .filter((f) => f)
-            .join("; ")
+          buildInlineStyle(
+            new Map([
+              [
+                "height",
+                `${
+                  currentStyle?.height ??
+                  `${initialCoords?.height?.toFixed(0)}px`
+                }`,
+              ],
+              [
+                "width",
+                `${
+                  currentStyle?.width ?? `${initialCoords?.width?.toFixed(0)}px`
+                }`,
+              ],
+              [
+                "left",
+                `${
+                  isResizing
+                    ? (startCoords.current?.left ?? 0).toFixed(0)
+                    : (
+                        e.clientX - (offsetCoords.current?.dragOffsetLeft ?? 0)
+                      ).toFixed(0)
+                }px`,
+              ],
+              [
+                "top",
+                `${
+                  isResizing
+                    ? (startCoords.current?.top ?? 0).toFixed(0)
+                    : (
+                        e.clientY - (offsetCoords.current?.dragOffsetTop ?? 0)
+                      ).toFixed(0)
+                }px`,
+              ],
+            ])
+          )
         );
 
         /**
@@ -143,11 +154,11 @@ const useDraggable = ({
   );
 
   const handlePointerMove = useCallback(
-    (e: PointerEvent, ref?: React.MutableRefObject<HTMLElement | null>) => {
+    (e: PointerEvent) => {
       if (
-        !container?.current ||
-        !offsetCoords?.current ||
-        !startCoords?.current ||
+        !container.current ||
+        !offsetCoords.current ||
+        !startCoords.current ||
         requestedAnimationFrame.current !== undefined
       ) {
         return;

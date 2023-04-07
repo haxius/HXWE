@@ -42,7 +42,7 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
     [handlePointerUp]
   );
   const onDragHandlePointerMove = useCallback(
-    (e: PointerEvent) => handlePointerMove(e, moveRef),
+    (e: PointerEvent) => handlePointerMove(e),
     [handlePointerMove]
   );
 
@@ -57,7 +57,7 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
     [handlePointerUp]
   );
   const onResizeHandlePointerMove = useCallback(
-    (e: PointerEvent) => handlePointerMove(e, moveRef),
+    (e: PointerEvent) => handlePointerMove(e),
     [handlePointerMove]
   );
 

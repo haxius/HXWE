@@ -40,10 +40,7 @@ export interface IUseDraggableResponse {
     ref: React.MutableRefObject<HTMLElement | null>,
     type: EUseDraggableContainerType
   ) => void;
-  handlePointerMove: (
-    e: PointerEvent,
-    ref: React.MutableRefObject<HTMLElement | null>
-  ) => void;
+  handlePointerMove: (e: PointerEvent) => void;
   handlePointerUp: (
     e: PointerEvent,
     ref: React.MutableRefObject<HTMLElement | null>,
