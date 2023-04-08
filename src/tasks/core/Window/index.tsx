@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { TTaskPropsWith } from "../../../system/tasks/models";
 import useDraggable from "../../../system/utils/hooks/useDraggable";
 import { EUseDraggableContainerType } from "../../../system/utils/hooks/useDraggable/models";
@@ -10,11 +10,13 @@ import StyledWindow, {
 } from "./Window.styled";
 
 interface IWindowProps {
-  coords?: Partial<IWindowCoords>;
+  contain?: boolean;
+  coords: IWindowCoords;
 }
 
 const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
   children,
+  contain = true,
   coords: initialCoords,
   name,
 }) => {
@@ -24,11 +26,11 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
 
   console.log("Rendered", name);
 
-  const { handlePointerDown, handlePointerMove, handlePointerUp } =
+  const { coords, handlePointerDown, handlePointerMove, handlePointerUp } =
     useDraggable({
       container: containerRef,
       initialCoords,
-      //quality: 0,
+      restrictBounds: contain,
     });
 
   const onDragHandlePointerDown = useCallback(
@@ -61,8 +63,12 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
     [handlePointerMove]
   );
 
+  useEffect(() => {
+    containerRef.current?.removeAttribute("style");
+  }, [coords]);
+
   return (
-    <StyledWindow ref={containerRef}>
+    <StyledWindow {...coords} ref={containerRef}>
       <StyledWindowHandle
         ref={moveRef}
         onPointerDown={onDragHandlePointerDown}

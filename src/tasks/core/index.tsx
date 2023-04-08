@@ -7,7 +7,12 @@ const CoreTasks: React.FC = () => (
   <TaskRunner
     initialTasks={[
       { component: <Wallpaper />, name: "Wallpaper" },
-      { component: <Window />, name: "Window" },
+      {
+        component: (
+          <Window coords={{ width: 320, height: 240, top: 100, left: 100 }} />
+        ),
+        name: "Window",
+      },
       // { component: <Window />, name: "Window2" },
     ]}
   />

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ICoords } from "../../../models/coords";
 import {
   EUseDraggableContainerType,
@@ -8,39 +8,38 @@ import {
   IUseDraggableResponse,
 } from "./models";
 import buildInlineStyle from "./utils/buildInlineStyle";
+import buildTransformStyle from "./utils/buildTransformStyle";
 import cancelPendingAnimationFrames from "./utils/cancelPendingAnimationFrames";
 import computeBoxSize from "./utils/computeBoxSize";
+import propertyWithDangerouslyRemovedCssUnit from "./utils/propertyWithDangerouslyRemovedCssUnit";
 
 const useDraggable = ({
   container,
-  initialCoords,
+  initialCoords = {
+    height: 240,
+    left: 100,
+    top: 100,
+    width: 320,
+  },
   quality = EUseDraggableQuality.BALANCED,
   restrictBounds = true,
 }: IUseDraggableProps): IUseDraggableResponse => {
+  const [coords, setCoords] = useState<ICoords>(initialCoords);
+
   useEffect(() => {
-    /**
-     * Set Initial Window Size and Position
-     */
     container.current?.setAttribute(
       "style",
-      buildInlineStyle(
-        new Map([
-          ["height", `${initialCoords?.height ?? 240}px`],
-          ["left", `${initialCoords?.left ?? 100}px`],
-          ["top", `${initialCoords?.top ?? 100}px`],
-          ["width", `${initialCoords?.width ?? 320}px`],
-        ])
-      )
+      buildInlineStyle({
+        height: `${initialCoords.height}px`,
+        left: `${initialCoords.left}px`,
+        top: `${initialCoords.top}px`,
+        width: `${initialCoords.width}px`,
+      })
     );
   }, [container, initialCoords]);
 
-  /**
-   * A few pieces of information we want to persist between function
-   * calls but do not want to cause react state renders.
-   */
   const startCoords = useRef<ICoords | undefined>();
   const offsetCoords = useRef<Partial<IUseDraggableCoords> | undefined>();
-  const deltaT = useRef<number>(0);
   const requestedAnimationFrame = useRef<number | undefined>();
 
   const handlePointerDown = useCallback(
@@ -49,9 +48,6 @@ const useDraggable = ({
       ref: React.MutableRefObject<HTMLElement | null>,
       type: EUseDraggableContainerType
     ) => {
-      /**
-       * Ignore multi-touch pointer down events.
-       */
       if (
         (type === EUseDraggableContainerType.DRAG &&
           offsetCoords.current?.dragOffsetTop !== undefined) ||
@@ -61,9 +57,6 @@ const useDraggable = ({
         return;
       }
 
-      /**
-       * Cancel pending animation frames
-       */
       cancelPendingAnimationFrames(requestedAnimationFrame.current);
 
       startCoords.current = computeBoxSize(container.current);
@@ -89,9 +82,6 @@ const useDraggable = ({
     (e: PointerEvent, ref: React.MutableRefObject<HTMLElement | null>) => {
       ref?.current?.releasePointerCapture(e.pointerId);
 
-      /**
-       * Cancel pending animation frames
-       */
       cancelPendingAnimationFrames(requestedAnimationFrame.current);
 
       requestAnimationFrame(() => {
@@ -99,58 +89,68 @@ const useDraggable = ({
           container.current && window.getComputedStyle(container.current);
         const isResizing = offsetCoords.current?.resizeOffsetLeft !== undefined;
 
+        let newLeft = isResizing
+          ? startCoords.current?.left ?? 0
+          : e.clientX - (offsetCoords.current?.dragOffsetLeft ?? 0);
+
+        let newTop = isResizing
+          ? startCoords.current?.top ?? 0
+          : e.clientY - (offsetCoords.current?.dragOffsetTop ?? 0);
+
+        if (restrictBounds) {
+          newLeft = Math.max(
+            Math.min(
+              newLeft,
+              window.innerWidth - (container.current?.offsetWidth ?? 0)
+            ),
+            0
+          );
+          newTop = Math.max(
+            Math.min(
+              newTop,
+              window.innerHeight - (container.current?.offsetHeight ?? 0)
+            ),
+            0
+          );
+        }
+
         container.current?.setAttribute(
           "style",
-          buildInlineStyle(
-            new Map([
-              [
-                "height",
-                `${
-                  currentStyle?.height ??
-                  `${initialCoords?.height?.toFixed(0)}px`
-                }`,
-              ],
-              [
-                "width",
-                `${
-                  currentStyle?.width ?? `${initialCoords?.width?.toFixed(0)}px`
-                }`,
-              ],
-              [
-                "left",
-                `${
-                  isResizing
-                    ? (startCoords.current?.left ?? 0).toFixed(0)
-                    : (
-                        e.clientX - (offsetCoords.current?.dragOffsetLeft ?? 0)
-                      ).toFixed(0)
-                }px`,
-              ],
-              [
-                "top",
-                `${
-                  isResizing
-                    ? (startCoords.current?.top ?? 0).toFixed(0)
-                    : (
-                        e.clientY - (offsetCoords.current?.dragOffsetTop ?? 0)
-                      ).toFixed(0)
-                }px`,
-              ],
-            ])
-          )
+          buildInlineStyle({
+            height: `${
+              currentStyle?.height ?? `${initialCoords?.height?.toFixed(0)}px`
+            }`,
+            width: `${
+              currentStyle?.width ?? `${initialCoords?.width?.toFixed(0)}px`
+            }`,
+            left: `${newLeft.toFixed(0)}px`,
+            top: `${newTop.toFixed(0)}px`,
+          })
         );
 
-        /**
-         * Cancel pending animation frames
-         */
         cancelPendingAnimationFrames(requestedAnimationFrame.current);
+
+        setCoords({
+          height: Math.trunc(
+            currentStyle
+              ? propertyWithDangerouslyRemovedCssUnit(currentStyle, "height")
+              : initialCoords.height
+          ),
+          width: Math.trunc(
+            currentStyle
+              ? propertyWithDangerouslyRemovedCssUnit(currentStyle, "width")
+              : initialCoords.width
+          ),
+          left: Math.trunc(newLeft),
+          top: Math.trunc(newTop),
+        });
 
         offsetCoords.current = undefined;
         startCoords.current = undefined;
         requestedAnimationFrame.current = undefined;
       });
     },
-    [container, initialCoords?.height, initialCoords?.width]
+    [container, initialCoords?.height, initialCoords?.width, restrictBounds]
   );
 
   const handlePointerMove = useCallback(
@@ -168,92 +168,79 @@ const useDraggable = ({
       const isDragging = offsetCoords.current?.dragOffsetLeft !== undefined;
 
       requestedAnimationFrame.current = requestAnimationFrame(() => {
-        const lastDeltaT = deltaT.current;
-        const currentDeltaT = new Date().getTime();
-
-        if (
-          quality === EUseDraggableQuality.ECO &&
-          currentDeltaT - lastDeltaT < 33
-        ) {
-          requestedAnimationFrame.current = undefined;
-          return;
-        }
-
-        deltaT.current = currentDeltaT;
-
-        const newLeft = isDragging
-          ? e.clientX - (offsetCoords.current?.dragOffsetLeft ?? 0)
+        let newLeft = isDragging
+          ? e.clientX -
+            (offsetCoords.current?.dragOffsetLeft ?? 0) -
+            (startCoords.current?.left ?? 0)
           : startCoords.current?.left ?? 0;
 
-        const newTop = isDragging
-          ? e.clientY - (offsetCoords.current?.dragOffsetTop ?? 0)
+        let newTop = isDragging
+          ? e.clientY -
+            (offsetCoords.current?.dragOffsetTop ?? 0) -
+            (startCoords.current?.top ?? 0)
           : startCoords.current?.top ?? 0;
 
         const newWidth =
           (e.clientX -
-            (offsetCoords?.current?.resizeOffsetLeft ?? 0) +
-            (startCoords?.current?.width ?? 0)) /
+            (offsetCoords.current?.resizeOffsetLeft ?? 0) +
+            (startCoords.current?.width ?? 0)) /
           (startCoords.current?.width ?? 1);
 
         const newHeight =
           (e.clientY -
-            (offsetCoords?.current?.resizeOffsetTop ?? 0) +
-            (startCoords?.current?.height ?? 0)) /
+            (offsetCoords.current?.resizeOffsetTop ?? 0) +
+            (startCoords.current?.height ?? 0)) /
           (startCoords.current?.height ?? 1);
 
-        const transform = [];
-        const styles = [];
-
-        if (isResizing) {
-          transform.push(
-            `scale(${newWidth.toFixed(3)}, ${newHeight.toFixed(3)})`
+        if (restrictBounds) {
+          newLeft = Math.max(
+            Math.min(
+              newLeft,
+              window.innerWidth -
+                (container.current?.offsetWidth ?? 0) -
+                (startCoords.current?.left ?? 0)
+            ),
+            -1 * (startCoords.current?.left ?? 0)
           );
-        } else {
-          transform.push(`translateX(${newLeft.toFixed(0)}px)`);
-          transform.push(`translateY(${newTop.toFixed(0)}px)`);
-        }
-
-        styles.push(`transform: ${transform.join(" ")}`);
-        styles.push(`height: ${startCoords.current?.height}px`);
-        styles.push(`width: ${startCoords.current?.width}px`);
-
-        if (isResizing) {
-          styles.push(`top: ${startCoords.current?.top}px`);
-          styles.push(`left: ${startCoords.current?.left}px`);
+          newTop = Math.max(
+            Math.min(
+              newTop,
+              window.innerHeight -
+                (container.current?.offsetHeight ?? 0) -
+                (startCoords.current?.top ?? 0)
+            ),
+            -1 * (startCoords.current?.top ?? 0)
+          );
         }
 
         container?.current?.setAttribute(
           "style",
-          styles.filter((f) => f).join("; ")
+          buildInlineStyle([
+            [
+              "transform",
+              buildTransformStyle({
+                scale: isResizing
+                  ? `${newWidth.toFixed(3)}, ${newHeight.toFixed(3)}`
+                  : undefined,
+                translateX: isDragging ? `${newLeft.toFixed(0)}px` : undefined,
+                translateY: isDragging ? `${newTop.toFixed(0)}px` : undefined,
+              }),
+            ],
+            ["height", `${startCoords.current?.height}px`],
+            ["width", `${startCoords.current?.width}px`],
+            ["top", isResizing ? `${startCoords.current?.top}px` : undefined],
+            ["left", isResizing ? `${startCoords.current?.left}px` : undefined],
+          ])
         );
 
         requestedAnimationFrame.current = undefined;
       });
-
-      // let restrictedLeft = restrictBounds
-      //   ? Math.max(
-      //       Math.min(
-      //         newLeft,
-      //         window.innerWidth - (ref?.current?.offsetWidth ?? 0)
-      //       ),
-      //       0
-      //     )
-      //   : 0;
-
-      // const restrictedTop = restrictBounds
-      //   ? Math.max(
-      //       Math.min(
-      //         newTop,
-      //         window.innerHeight - (ref?.current?.offsetHeight ?? 0)
-      //       ),
-      //       0
-      //     )
-      //   : 0;
     },
-    [container, quality]
+    [container, restrictBounds]
   );
 
   return {
+    coords,
     handlePointerDown,
     handlePointerUp,
     handlePointerMove,

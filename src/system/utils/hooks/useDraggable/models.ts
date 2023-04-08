@@ -29,12 +29,13 @@ export interface IUseDraggableCoords {
 export interface IUseDraggableProps {
   container: React.MutableRefObject<HTMLElement | null>;
   debounce?: boolean;
-  initialCoords: Partial<ICoords> | undefined;
+  initialCoords?: ICoords | undefined;
   quality?: EUseDraggableQuality;
   restrictBounds?: boolean;
 }
 
 export interface IUseDraggableResponse {
+  coords: ICoords;
   handlePointerDown: (
     e: PointerEvent,
     ref: React.MutableRefObject<HTMLElement | null>,

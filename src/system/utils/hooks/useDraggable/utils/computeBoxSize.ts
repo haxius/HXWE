@@ -1,4 +1,5 @@
 import { ICoords } from "../../../../models/coords";
+import propertyWithDangerouslyRemovedCssUnit from "./propertyWithDangerouslyRemovedCssUnit";
 
 const computeBoxSize = (container: HTMLElement | null): ICoords | undefined => {
   if (!container) {
@@ -11,29 +12,27 @@ const computeBoxSize = (container: HTMLElement | null): ICoords | undefined => {
     return;
   }
 
-  /**
-   * This may fail if the unit is any unit other than 'px'.
-   */
-  const propertyWithDangerouslyRemovedCssUnit = (property: string) =>
-    parseFloat(style.getPropertyValue(property).replace(/px$/, ""));
-
   return {
     height:
-      propertyWithDangerouslyRemovedCssUnit("height") ||
+      propertyWithDangerouslyRemovedCssUnit(style, "height") ||
       container.offsetHeight +
-        propertyWithDangerouslyRemovedCssUnit("padding-top") +
-        propertyWithDangerouslyRemovedCssUnit("padding-bottom") +
-        propertyWithDangerouslyRemovedCssUnit("border-top-width") +
-        propertyWithDangerouslyRemovedCssUnit("border-bottom-width"),
+        propertyWithDangerouslyRemovedCssUnit(style, "padding-top") +
+        propertyWithDangerouslyRemovedCssUnit(style, "padding-bottom") +
+        propertyWithDangerouslyRemovedCssUnit(style, "border-top-width") +
+        propertyWithDangerouslyRemovedCssUnit(style, "border-bottom-width"),
     width:
-      propertyWithDangerouslyRemovedCssUnit("width") ||
+      propertyWithDangerouslyRemovedCssUnit(style, "width") ||
       container.offsetWidth +
-        propertyWithDangerouslyRemovedCssUnit("padding-left") +
-        propertyWithDangerouslyRemovedCssUnit("padding-right") +
-        propertyWithDangerouslyRemovedCssUnit("border-left-width") +
-        propertyWithDangerouslyRemovedCssUnit("border-right-width"),
-    left: propertyWithDangerouslyRemovedCssUnit("left") || container.offsetLeft,
-    top: propertyWithDangerouslyRemovedCssUnit("top") || container.offsetTop,
+        propertyWithDangerouslyRemovedCssUnit(style, "padding-left") +
+        propertyWithDangerouslyRemovedCssUnit(style, "padding-right") +
+        propertyWithDangerouslyRemovedCssUnit(style, "border-left-width") +
+        propertyWithDangerouslyRemovedCssUnit(style, "border-right-width"),
+    left:
+      propertyWithDangerouslyRemovedCssUnit(style, "left") ||
+      container.offsetLeft,
+    top:
+      propertyWithDangerouslyRemovedCssUnit(style, "top") ||
+      container.offsetTop,
   };
 };
 
