@@ -11,7 +11,7 @@ const StyledWindow = styled.article`
   border: 1px solid red;
   padding: 5px;
   transform-origin: top left;
-  will-change: transform, left, top, width, heights;
+  will-change: transform, left, top, width, height;
 
   ${({ width, height, top, left }: TPropsWithTheme<IStyledWindowProps>) => `
     height: ${height}px;
@@ -44,6 +44,14 @@ export const StyledWindowResizeHandle = styled.div`
   position: absolute;
   user-select: none;
   cursor: grab;
+`;
+
+export const StyledWindowOverlay = styled(StyledWindow)`
+  border: 0;
+  will-change: height, left, opacity, top, transform, width;
+  background-color: blue;
+  opacity: 0;
+  pointer-events: none;
 `;
 
 export default StyledWindow;

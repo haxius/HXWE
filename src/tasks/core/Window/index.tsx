@@ -4,6 +4,7 @@ import useDraggable from "../../../system/utils/hooks/useDraggable";
 import { EUseDraggableContainerType } from "../../../system/utils/hooks/useDraggable/models";
 import { IWindowCoords } from "./models";
 import StyledWindow, {
+  StyledWindowOverlay,
   StyledWindowHandle,
   StyledWindowResizeHandle,
   StyledWindowWrapper,
@@ -22,6 +23,7 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
 }) => {
   const containerRef = useRef<HTMLElement | null>(null);
   const moveRef = useRef<HTMLElement | null>(null);
+  const overlayRef = useRef<HTMLElement | null>(null);
   const resizeRef = useRef<HTMLElement | null>(null);
 
   console.log("Rendered", name);
@@ -30,7 +32,9 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
     useDraggable({
       container: containerRef,
       initialCoords,
+      overlay: overlayRef,
       restrictBounds: contain,
+      // quality: 2,
     });
 
   const onDragHandlePointerDown = useCallback(
@@ -68,23 +72,26 @@ const Window: React.FC<TTaskPropsWith<IWindowProps>> = ({
   }, [coords]);
 
   return (
-    <StyledWindow {...coords} ref={containerRef}>
-      <StyledWindowHandle
-        ref={moveRef}
-        onPointerDown={onDragHandlePointerDown}
-        onPointerUp={onDragHandlePointerUp}
-        onPointerMove={onDragHandlePointerMove}
-      />
-      <StyledWindowWrapper>
-        <StyledWindowResizeHandle
-          ref={resizeRef}
-          onPointerDown={onResizeHandlePointerDown}
-          onPointerUp={onResizeHandlePointerUp}
-          onPointerMove={onResizeHandlePointerMove}
+    <>
+      <StyledWindow {...coords} ref={containerRef}>
+        <StyledWindowHandle
+          ref={moveRef}
+          onPointerDown={onDragHandlePointerDown}
+          onPointerUp={onDragHandlePointerUp}
+          onPointerMove={onDragHandlePointerMove}
         />
-        {children}
-      </StyledWindowWrapper>
-    </StyledWindow>
+        <StyledWindowWrapper>
+          <StyledWindowResizeHandle
+            ref={resizeRef}
+            onPointerDown={onResizeHandlePointerDown}
+            onPointerUp={onResizeHandlePointerUp}
+            onPointerMove={onResizeHandlePointerMove}
+          />
+          {children}
+        </StyledWindowWrapper>
+      </StyledWindow>
+      <StyledWindowOverlay {...coords} ref={overlayRef} />
+    </>
   );
 };
 

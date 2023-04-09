@@ -30,6 +30,7 @@ export interface IUseDraggableProps {
   container: React.MutableRefObject<HTMLElement | null>;
   debounce?: boolean;
   initialCoords?: ICoords | undefined;
+  overlay: React.MutableRefObject<HTMLElement | null>;
   quality?: EUseDraggableQuality;
   restrictBounds?: boolean;
 }

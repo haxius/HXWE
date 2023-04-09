@@ -12,6 +12,7 @@ import buildTransformStyle from "./utils/buildTransformStyle";
 import cancelPendingAnimationFrames from "./utils/cancelPendingAnimationFrames";
 import computeBoxSize from "./utils/computeBoxSize";
 import propertyWithDangerouslyRemovedCssUnit from "./utils/propertyWithDangerouslyRemovedCssUnit";
+import getMatrixTransform from "./utils/getMatrixTransform";
 
 const useDraggable = ({
   container,
@@ -21,6 +22,7 @@ const useDraggable = ({
     top: 100,
     width: 320,
   },
+  overlay,
   quality = EUseDraggableQuality.BALANCED,
   restrictBounds = true,
 }: IUseDraggableProps): IUseDraggableResponse => {
@@ -66,6 +68,15 @@ const useDraggable = ({
           resizeOffsetLeft: e.clientX,
           resizeOffsetTop: e.clientY,
         };
+
+        if (quality < EUseDraggableQuality.QUALITY) {
+          overlay.current?.setAttribute(
+            "style",
+            buildInlineStyle({
+              opacity: "0.33",
+            })
+          );
+        }
       } else {
         offsetCoords.current = {
           dragOffsetLeft: e.clientX - (startCoords.current?.left ?? 0),
@@ -75,7 +86,7 @@ const useDraggable = ({
 
       ref?.current?.setPointerCapture(e.pointerId);
     },
-    [container]
+    [container, overlay, quality]
   );
 
   const handlePointerUp = useCallback(
@@ -85,9 +96,15 @@ const useDraggable = ({
       cancelPendingAnimationFrames(requestedAnimationFrame.current);
 
       requestAnimationFrame(() => {
-        const currentStyle =
-          container.current && window.getComputedStyle(container.current);
         const isResizing = offsetCoords.current?.resizeOffsetLeft !== undefined;
+
+        const currentStyle =
+          isResizing && quality < EUseDraggableQuality.QUALITY
+            ? overlay.current && window.getComputedStyle(overlay.current)
+            : container.current && window.getComputedStyle(container.current);
+
+        const currentTransform =
+          currentStyle && getMatrixTransform(currentStyle);
 
         let newLeft = isResizing
           ? startCoords.current?.left ?? 0
@@ -96,6 +113,16 @@ const useDraggable = ({
         let newTop = isResizing
           ? startCoords.current?.top ?? 0
           : e.clientY - (offsetCoords.current?.dragOffsetTop ?? 0);
+
+        let newWidth = currentStyle
+          ? propertyWithDangerouslyRemovedCssUnit(currentStyle, "width") *
+            (currentTransform?.scaleX ?? 1)
+          : startCoords.current?.width ?? initialCoords.width;
+
+        let newHeight = currentStyle
+          ? propertyWithDangerouslyRemovedCssUnit(currentStyle, "height") *
+            (currentTransform?.scaleY ?? 1)
+          : startCoords.current?.height ?? initialCoords.height;
 
         if (restrictBounds) {
           newLeft = Math.max(
@@ -118,29 +145,30 @@ const useDraggable = ({
           "style",
           buildInlineStyle({
             height: `${
-              currentStyle?.height ?? `${initialCoords?.height?.toFixed(0)}px`
+              isResizing
+                ? newHeight
+                : currentStyle?.height ??
+                  `${initialCoords?.height?.toFixed(0)}px`
             }`,
             width: `${
-              currentStyle?.width ?? `${initialCoords?.width?.toFixed(0)}px`
+              isResizing
+                ? newWidth
+                : currentStyle?.width ?? `${initialCoords?.width?.toFixed(0)}px`
             }`,
             left: `${newLeft.toFixed(0)}px`,
             top: `${newTop.toFixed(0)}px`,
           })
         );
 
+        if (isResizing) {
+          overlay.current?.removeAttribute("style");
+        }
+
         cancelPendingAnimationFrames(requestedAnimationFrame.current);
 
         setCoords({
-          height: Math.trunc(
-            currentStyle
-              ? propertyWithDangerouslyRemovedCssUnit(currentStyle, "height")
-              : initialCoords.height
-          ),
-          width: Math.trunc(
-            currentStyle
-              ? propertyWithDangerouslyRemovedCssUnit(currentStyle, "width")
-              : initialCoords.width
-          ),
+          height: Math.trunc(newHeight),
+          width: Math.trunc(newWidth),
           left: Math.trunc(newLeft),
           top: Math.trunc(newTop),
         });
@@ -150,7 +178,14 @@ const useDraggable = ({
         requestedAnimationFrame.current = undefined;
       });
     },
-    [container, initialCoords?.height, initialCoords?.width, restrictBounds]
+    [
+      container,
+      initialCoords?.height,
+      initialCoords?.width,
+      overlay,
+      quality,
+      restrictBounds,
+    ]
   );
 
   const handlePointerMove = useCallback(
@@ -213,30 +248,34 @@ const useDraggable = ({
           );
         }
 
-        container?.current?.setAttribute(
+        (isResizing && quality < EUseDraggableQuality.QUALITY
+          ? overlay
+          : container
+        )?.current?.setAttribute(
           "style",
-          buildInlineStyle([
-            [
-              "transform",
-              buildTransformStyle({
-                scale: isResizing
-                  ? `${newWidth.toFixed(3)}, ${newHeight.toFixed(3)}`
-                  : undefined,
-                translateX: isDragging ? `${newLeft.toFixed(0)}px` : undefined,
-                translateY: isDragging ? `${newTop.toFixed(0)}px` : undefined,
-              }),
-            ],
-            ["height", `${startCoords.current?.height}px`],
-            ["width", `${startCoords.current?.width}px`],
-            ["top", isResizing ? `${startCoords.current?.top}px` : undefined],
-            ["left", isResizing ? `${startCoords.current?.left}px` : undefined],
-          ])
+          buildInlineStyle({
+            transform: buildTransformStyle({
+              scale: isResizing
+                ? `${newWidth.toFixed(3)}, ${newHeight.toFixed(3)}`
+                : undefined,
+              translateX: isDragging ? `${newLeft.toFixed(0)}px` : undefined,
+              translateY: isDragging ? `${newTop.toFixed(0)}px` : undefined,
+            }),
+            height: `${startCoords.current?.height}px`,
+            width: `${startCoords.current?.width}px`,
+            top: isResizing ? `${startCoords.current?.top}px` : undefined,
+            left: isResizing ? `${startCoords.current?.left}px` : undefined,
+            opacity:
+              isResizing && quality < EUseDraggableQuality.QUALITY
+                ? "0.33"
+                : undefined,
+          })
         );
 
         requestedAnimationFrame.current = undefined;
       });
     },
-    [container, restrictBounds]
+    [container, overlay, quality, restrictBounds]
   );
 
   return {
